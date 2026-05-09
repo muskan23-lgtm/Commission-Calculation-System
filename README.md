@@ -48,11 +48,6 @@ The application is deployed and can be accessed [commission-calculation-system](
 - **Password:** pass
 
 
-## 🚀 Project Demo Video
-
-Experience the full walkthrough of the project in action 👇  
-
-[![Watch the Demo Video](https://raw.githubusercontent.com/github/explore/main/topics/video/video.png)](https://drive.google.com/file/d/1XwQw2KSZYfg7PcuXV7Yxt8Uc_FiHtmLk/view?usp=sharing)
 
 
 
