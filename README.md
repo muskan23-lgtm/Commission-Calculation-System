@@ -1,8 +1,8 @@
 # My Contact Details
- - Name: Shah Mohammad
+ - Name: Namrata Singh
  - college: IIT Patna
- - email: shahiitp07@gmail.com
- - contact: 9798428687
+
+ 
 
 
 # Commission Calculation System
