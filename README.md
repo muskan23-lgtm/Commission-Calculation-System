@@ -150,10 +150,7 @@ The repository includes a sample SQLite database (`backend/commission.db`). `cor
 
 - Python 3.11+
 - Node.js 18+
-## Clone Locally
-```
-git clone https://github.com/QaShah07/commission-calculation-system1.git
-```
+
 ## Backend Setup
 
 ```bash
