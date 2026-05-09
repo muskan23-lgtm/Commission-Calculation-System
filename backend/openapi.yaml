@@ -1,0 +1,1183 @@
+openapi: 3.0.3
+info:
+  title: Commission Calculation System API
+  version: "1.0.0"
+  description: >
+    REST API that powers the Commission Calculation System. The service exposes
+    endpoints for authentication, agent management, sales capture, dashboards,
+    reporting, and clawback operations.
+servers:
+  - url: http://localhost:5002
+    description: Local development server
+tags:
+  - name: Health
+  - name: Auth
+  - name: Agents
+  - name: Sales
+  - name: Dashboard
+  - name: Reports
+  - name: Clawbacks
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    AuthToken:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+    Agent:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        level:
+          type: integer
+          description: 1=Agent, 2=Team Lead, 3=Manager, 4=Director
+        role:
+          type: string
+        parent_id:
+          type: integer
+          nullable: true
+        external_id:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        avatar_url:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - email
+        - level
+        - role
+        - active
+    AgentCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        level:
+          type: integer
+          default: 1
+        parent_id:
+          type: integer
+          nullable: true
+        external_id:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+          default: true
+        avatar_url:
+          type: string
+          nullable: true
+      required:
+        - name
+        - email
+        - password
+    AgentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        external_id:
+          type: string
+        avatar_url:
+          type: string
+        level:
+          type: integer
+        parent_id:
+          type: integer
+          nullable: true
+        active:
+          type: boolean
+        password:
+          type: string
+    Policy:
+      type: object
+      properties:
+        id:
+          type: integer
+        number:
+          type: string
+        product:
+          type: string
+        fyc_rate:
+          type: number
+          format: float
+    SaleRequest:
+      type: object
+      properties:
+        policy_number:
+          type: string
+          description: Existing policy number to reuse. If absent a new number is generated.
+        product:
+          type: string
+          default: Life
+        fyc_rate:
+          type: number
+          format: float
+          default: 0.5
+        premium:
+          type: number
+          format: float
+        seller_id:
+          type: integer
+        sale_date:
+          type: string
+          format: date
+        customer_name:
+          type: string
+        mobile:
+          type: string
+        gender:
+          type: string
+        notes:
+          type: string
+      required:
+        - premium
+        - seller_id
+    SaleRecordResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        sale_id:
+          type: integer
+        policy_number:
+          type: string
+      required:
+        - message
+        - sale_id
+        - policy_number
+    SaleHistoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        policy_number:
+          type: string
+        sales_rep:
+          type: string
+        customer:
+          type: string
+        product:
+          type: string
+        amount:
+          type: number
+          format: float
+        date:
+          type: string
+          format: date
+    PaginatedSales:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleHistoryItem'
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+      required:
+        - items
+        - page
+        - limit
+        - total
+    PolicyLookup:
+      type: object
+      properties:
+        exists:
+          type: boolean
+        policy:
+          type: object
+          nullable: true
+          properties:
+            number:
+              type: string
+            product:
+              type: string
+            fyc_rate:
+              type: number
+              format: float
+        sales:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              customer:
+                type: string
+                nullable: true
+              seller_id:
+                type: integer
+              premium:
+                type: number
+                format: float
+              date:
+                type: string
+                format: date
+      required:
+        - exists
+    DashboardSummary:
+      type: object
+      description: Aggregated metrics displayed on the main dashboard.
+      properties:
+        totals:
+          type: object
+          properties:
+            commissions:
+              type: number
+            sales:
+              type: number
+            agents:
+              type: integer
+        deltas:
+          type: object
+          properties:
+            commissions:
+              type: number
+            sales:
+              type: number
+            customers:
+              type: number
+            avg_deal_size:
+              type: number
+        stats:
+          type: object
+          properties:
+            new_customers:
+              type: integer
+            avg_deal_size:
+              type: number
+        revenue_over_time:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              amount:
+                type: number
+        team_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              amount:
+                type: number
+        top_earners:
+          type: array
+          items:
+            type: object
+            properties:
+              agent:
+                type: string
+              amount:
+                type: number
+        recent_sales:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              sales_rep:
+                type: string
+              customer:
+                type: string
+              amount:
+                type: number
+              date:
+                type: string
+                format: date
+        hierarchy:
+          type: array
+          items:
+            type: object
+            properties:
+              level:
+                type: integer
+              title:
+                type: string
+              count:
+                type: integer
+              members:
+                type: array
+                items:
+                  type: string
+    ReportSummary:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            mode:
+              type: string
+            label:
+              type: string
+            start:
+              type: string
+            end:
+              type: string
+        by_agent_bar:
+          type: array
+          items:
+            type: object
+            properties:
+              agent:
+                type: string
+              commission:
+                type: number
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              value:
+                type: number
+        kpi_total:
+          type: number
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              quarter:
+                type: string
+              agent:
+                type: string
+              total_sale:
+                type: number
+              avg_rate:
+                type: number
+              total_commission:
+                type: number
+        volume_bonus:
+          type: array
+          items:
+            type: object
+            properties:
+              agent:
+                type: string
+              volume:
+                type: number
+              tier:
+                type: string
+              bonus:
+                type: number
+        agents:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+    ClawbackSummary:
+      type: object
+      properties:
+        pending:
+          type: integer
+        avg:
+          type: number
+        impact:
+          type: number
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              value:
+                type: number
+        by_sales:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+    ClawbackList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              policy_number:
+                type: string
+              cancellation_date:
+                type: string
+                format: date
+              status:
+                type: string
+              amount:
+                type: number
+              original_amount:
+                type: number
+              salesperson:
+                type: string
+    ClawbackDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        policy:
+          $ref: '#/components/schemas/Policy'
+        cancellation_date:
+          type: string
+          format: date
+        status:
+          type: string
+        reason:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              agent:
+                type: string
+              agent_id:
+                type: integer
+              entry_type:
+                type: string
+              original_amount:
+                type: number
+              clawback_amount:
+                type: number
+              meta:
+                type: object
+                nullable: true
+    ClawbackPreview:
+      type: object
+      properties:
+        exists:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+        policy:
+          $ref: '#/components/schemas/Policy'
+        first_sale_date:
+          type: string
+          format: date
+        rule_factor:
+          type: number
+        totals:
+          type: object
+          properties:
+            original:
+              type: number
+            clawback:
+              type: number
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id:
+                type: integer
+              entry_type:
+                type: string
+              original_amount:
+                type: number
+              clawback_amount:
+                type: number
+              meta:
+                type: string
+                nullable: true
+      required:
+        - exists
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Issue a JWT for an existing agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Create a new agent record and return a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - name
+                - email
+                - password
+      responses:
+        '201':
+          description: Agent registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /agents:
+    get:
+      tags:
+        - Agents
+      security:
+        - bearerAuth: []
+      summary: List agents ordered by seniority
+      responses:
+        '200':
+          description: Agents retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agent'
+    post:
+      tags:
+        - Agents
+      security:
+        - bearerAuth: []
+      summary: Create a new agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreate'
+      responses:
+        '201':
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /agents/tree:
+    get:
+      tags:
+        - Agents
+      security:
+        - bearerAuth: []
+      summary: Hierarchical tree of agents with nested children
+      responses:
+        '200':
+          description: Hierarchy retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    level:
+                      type: integer
+                    role:
+                      type: string
+                    parent_id:
+                      type: integer
+                      nullable: true
+                    children:
+                      type: array
+                      items:
+                        type: object
+  /agents/{agentId}:
+    put:
+      tags:
+        - Agents
+      security:
+        - bearerAuth: []
+      summary: Update an agent record
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdate'
+      responses:
+        '200':
+          description: Agent updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Agents
+      security:
+        - bearerAuth: []
+      summary: Delete an agent with no downline members
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Agent deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Agent has downline members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /sales:
+    post:
+      tags:
+        - Sales
+      security:
+        - bearerAuth: []
+      summary: Record a sale and trigger commission calculations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleRequest'
+      responses:
+        '200':
+          description: Sale recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleRecordResponse'
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /sales/next-policy-number:
+    get:
+      tags:
+        - Sales
+      security:
+        - bearerAuth: []
+      summary: Retrieve the next generated policy number
+      responses:
+        '200':
+          description: Generated policy number
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  next_policy_number:
+                    type: string
+  /sales/recent:
+    get:
+      tags:
+        - Sales
+      security:
+        - bearerAuth: []
+      summary: Latest 10 sales for dashboard widgets
+      responses:
+        '200':
+          description: Recent sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    sales_rep:
+                      type: string
+                    customer:
+                      type: string
+                    amount:
+                      type: number
+                    date:
+                      type: string
+                      format: date
+  /sales/history:
+    get:
+      tags:
+        - Sales
+      security:
+        - bearerAuth: []
+      summary: Paged sales history with simple text search
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: q
+          schema:
+            type: string
+            description: Search filter against customer name, product, or mobile
+      responses:
+        '200':
+          description: Paginated sales results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSales'
+  /sales/policy-lookup:
+    get:
+      tags:
+        - Sales
+      security:
+        - bearerAuth: []
+      summary: Look up a policy number and its sales history
+      parameters:
+        - in: query
+          name: policy_number
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lookup result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyLookup'
+        '400':
+          description: Missing policy number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: []
+      summary: Metrics and charts for the executive dashboard
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+  /reports/summary:
+    get:
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+      summary: Commission report summary for a selected period
+      parameters:
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum: [monthly, quarterly, annual]
+            default: quarterly
+        - in: query
+          name: ref
+          schema:
+            type: string
+            description: Optional reference period (YYYY-MM or YYYY)
+        - in: query
+          name: agent_id
+          schema:
+            type: string
+            description: Agent ID or "all"
+      responses:
+        '200':
+          description: Report payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportSummary'
+  /reports/export:
+    get:
+      tags:
+        - Reports
+      security:
+        - bearerAuth: []
+      summary: Export summary data as a CSV attachment
+      parameters:
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum: [monthly, quarterly, annual]
+        - in: query
+          name: ref
+          schema:
+            type: string
+        - in: query
+          name: agent_id
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV export
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+  /clawbacks/summary:
+    get:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: Aggregated statistics for clawback monitoring
+      responses:
+        '200':
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClawbackSummary'
+  /clawbacks:
+    get:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: List clawbacks with totals
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+            description: Filter by policy number or salesperson name
+      responses:
+        '200':
+          description: Clawback list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClawbackList'
+    post:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: Create a clawback request from a preview payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                policy_number:
+                  type: string
+                cancellation_date:
+                  type: string
+                  format: date
+                reason:
+                  type: string
+                  nullable: true
+                notes:
+                  type: string
+                  nullable: true
+              required:
+                - policy_number
+                - cancellation_date
+      responses:
+        '200':
+          description: Clawback created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  status:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /clawbacks/{clawbackId}:
+    get:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: Get details for a specific clawback
+      parameters:
+        - in: path
+          name: clawbackId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Clawback detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClawbackDetail'
+        '404':
+          description: Clawback not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /clawbacks/preview:
+    get:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: Preview recoverable commissions prior to creating a clawback
+      parameters:
+        - in: query
+          name: policy_number
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: cancellation_date
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Preview payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClawbackPreview'
+        '400':
+          description: Missing parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /clawbacks/approve:
+    post:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: Bulk approve clawback requests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+              required:
+                - ids
+      responses:
+        '200':
+          description: Approval results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        status:
+                          type: string
+  /clawbacks/deny:
+    post:
+      tags:
+        - Clawbacks
+      security:
+        - bearerAuth: []
+      summary: Bulk deny clawback requests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+              required:
+                - ids
+      responses:
+        '200':
+          description: Denial results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        status:
+                          type: string
