@@ -1,4 +1,5 @@
 from datetime import datetime, date
+from typing import Optional
 from sqlalchemy import Integer, String, Date, DateTime, ForeignKey, Float, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.db import Base
@@ -10,7 +11,7 @@ class Clawback(Base):
     policy_id: Mapped[int] = mapped_column(ForeignKey("policies.id"), nullable=False)
     cancellation_date: Mapped[date] = mapped_column(Date, nullable=False)
     reason: Mapped[str] = mapped_column(String(80), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="PENDING")  # PENDING|APPROVED|DENIED
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -25,6 +26,6 @@ class ClawbackItem(Base):
     entry_type: Mapped[str] = mapped_column(String(32), nullable=False)  # FYC/OVERRIDE/…
     original_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     clawback_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    meta: Mapped[str | None] = mapped_column(Text, nullable=True)
+    meta: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     clawback: Mapped["Clawback"] = relationship("Clawback", back_populates="items")
